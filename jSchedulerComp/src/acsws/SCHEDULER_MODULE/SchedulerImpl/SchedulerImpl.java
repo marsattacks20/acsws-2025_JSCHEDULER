@@ -3,6 +3,21 @@ package acsws.SCHEDULER_MODULE.SchedulerImpl;
 //Base component implementation, including container services and component lifecycle infrastructure
 import alma.acs.component.ComponentImplBase;
 import acsws.SCHEDULER_MODULE.SchedulerOperations;
+import acsws.TELESCOPE_MODULE.TelescopeOperations;
+//import acsws.TELESCOPE_MODULE.TelescopeComponentHelper;
+import acsws.STORAGE_MODULE.StorageOperations;
+//import acsws.STORAGE_MODULE.StorageComponentHelper;
+import acsws.DATABASE_MODULE.DataBaseOperations;
+//import acsws.DATABASE_MODULE.DataBaseComponentHelper;
+import acsws.TYPES.Proposal;
+import acsws.TYPES.Target;
+import acsws.TYPES.Position;
+
+
+
+
+
+
 import java.util.*;
 //ClassName usually is <Interface>Impl, but can be anything
 public class SchedulerImpl extends ComponentImplBase implements SchedulerOperations {
@@ -12,36 +27,15 @@ public class SchedulerImpl extends ComponentImplBase implements SchedulerOperati
     private boolean stopflag = false;
     private int propex = -1;
     private Thread schedulerThread;
-    private class Target {
-        public int tid;
-        public int coordinates;
-        public int expTime;
-        public Target(int tid, int coordinates, int expTime){
-            this.tid = tid;
-            this.coordinates = coordinates;
-            this.expTime = expTime;
-        }
-    }
-    private class Proposal {
-        public int id;
-        public ArrayList<Target> targetlist;
-        public int status;
-        public Proposal(int id, ArrayList<Target> target, int status){
-            this.id = id;
-            this.targetlist = target;
-            this.status = status;
-        }
-    }
+
+
     public SchedulerImpl() {
-        for(int i = 0; i < 5; i++){
-            ArrayList<Target> targets = new ArrayList<>();
-            for(int j = 0; j < 5; j++){
-                targets.add(new Target(j, j, j));
-            }
-            Proposal pro = new Proposal(i, targets, i);
-            proposals.add(pro);
-        }
+        //By Name
+        Telescope tel = TelescopeComponentHelper.narrow(this.m_containerServices.getComponent("<Name>"));
+        //Release Components
+        this.m_containerServies.releaseComponent(tel.name());
     }
+
     @Override
     public void start (){
         if (running){ //Exception
@@ -51,11 +45,16 @@ public class SchedulerImpl extends ComponentImplBase implements SchedulerOperati
                 running = true;
                 stopflag = false;
                 for (Proposal pro : proposals){
-                    propex = pro.id;
-                    for (Target target : pro.targetlist){
-                        //Telescope.observe(target.coordinate, target.expTime)
+                    byte[][] imageList = new byte[1024][1024];
+                    propex = pro.pid;
+                    int i = 0;
+                    for (Target target : pro.targets){
+                        byte[] image = Telescope.observe(target.coordinates, target.expTime);
+                        imageList[i] = image;
                         Thread.sleep(1000);
-                        }
+                    }
+                    storage.storeObservation(pro, imageList);
+
                     if (stopflag){
                         break;
                     }
