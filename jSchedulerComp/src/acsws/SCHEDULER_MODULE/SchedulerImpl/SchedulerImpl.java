@@ -56,7 +56,7 @@ public class SchedulerImpl extends ComponentImplBase implements SchedulerOperati
                     //Telescope.observe(target.coordinate, target.expTime)
                     Thread.sleep(1000);
                     }
-                if (!stopflag){
+                if (stopflag){
                     break;
                     }
             }
