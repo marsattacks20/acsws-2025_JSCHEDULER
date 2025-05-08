@@ -47,12 +47,14 @@ public class SchedulerImpl extends ComponentImplBase implements SchedulerOperati
         if (running){ //Exception
         }
         schedulerThread = new Thread( () -> {
+            try{
             running = true;
             stopflag = false;
             for (Proposal pro : proposals){
                 propex = pro.id;
                 for (Target target : pro.targetlist){
                     //Telescope.observe(target.coordinate, target.expTime)
+                    Thread.sleep(1000);
                     }
                 if (!stopflag){
                     break;
@@ -60,6 +62,9 @@ public class SchedulerImpl extends ComponentImplBase implements SchedulerOperati
             }
             propex = -1;
             running = false;
+        }catch(InterruptedException e){
+
+        }
         }
         );
         schedulerThread.start();
