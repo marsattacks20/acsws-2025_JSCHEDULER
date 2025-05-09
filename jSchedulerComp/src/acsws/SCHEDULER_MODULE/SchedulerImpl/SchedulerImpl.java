@@ -52,6 +52,7 @@ public class SchedulerImpl extends ComponentImplBase implements SchedulerOperati
     }
     @Override
     public void cleanUp() {
+        stopflag = true;
         m_containerServices.releaseComponent(tel.name());
         m_containerServices.releaseComponent(storage.name());
         m_containerServices.releaseComponent(db.name());
@@ -90,6 +91,7 @@ public class SchedulerImpl extends ComponentImplBase implements SchedulerOperati
                 running = false;
                 m_logger.info("All proposal executed");
             }catch(InterruptedException e){}
+            catch(Exception ex){m_logger.severe("Fail in getting proposal");}
         });
         schedulerThread.start();
     }
@@ -102,7 +104,7 @@ public class SchedulerImpl extends ComponentImplBase implements SchedulerOperati
     @Override
     public int proposalUnderExecution() throws NoProposalExecutingEx{
         if (propex == -1){
-            throw new AcsJNoProposalExecutingEx("Scheduler already stopped").toNoProposalExecutingEx();
+            throw new AcsJNoProposalExecutingEx("No proposal under execution").toNoProposalExecutingEx();
         }
         return propex;
     };
