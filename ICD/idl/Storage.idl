@@ -34,7 +34,6 @@ module STORAGE_MODULE
      */
     interface Storage :  ACS::ACSComponent
     {
-   
         /**
          * @return the next valid ID to store a proposal
          */

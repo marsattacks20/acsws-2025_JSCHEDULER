@@ -3,84 +3,107 @@ package acsws.SCHEDULER_MODULE.SchedulerImpl;
 //Base component implementation, including container services and component lifecycle infrastructure
 import alma.acs.component.ComponentImplBase;
 import acsws.SCHEDULER_MODULE.SchedulerOperations;
+import acsws.DATABASE_MODULE.DataBaseHelper;
+import acsws.TELESCOPE_MODULE.TelescopeHelper;
+import acsws.STORAGE_MODULE.StorageHelper;
+//
+import acsws.TELESCOPE_MODULE.Telescope;
+import acsws.STORAGE_MODULE.Storage;
+import acsws.DATABASE_MODULE.DataBase;
+import alma.acs.component.ComponentLifecycleException;
+import alma.JavaContainerError.wrappers.AcsJContainerServicesEx;
+import acsws.SYSTEMErr.*;
+import acsws.SYSTEMErr.wrappers.AcsJSchedulerAlreadyRunningEx;
+import acsws.SYSTEMErr.wrappers.AcsJSchedulerAlreadyStoppedEx;
+import acsws.SYSTEMErr.wrappers.AcsJNoProposalExecutingEx;
+import alma.acs.container.ContainerServices;
+import alma.acs.component.ComponentLifecycleException;
+//import acsws.DATABASE_MODULE.DataBaseComponentHelper;
+import acsws.TYPES.Proposal;
+import acsws.TYPES.Target;
+import acsws.TYPES.Position;
 import java.util.*;
 //ClassName usually is <Interface>Impl, but can be anything
 public class SchedulerImpl extends ComponentImplBase implements SchedulerOperations {
-    private boolean running = false;
-    final ArrayList<Proposal> proposals = new ArrayList<>();
-    final int i = 0;
-    private boolean stopflag = false;
-    private int propex = -1;
+    private boolean running;
+    private Proposal[] proposals;
+    private boolean stopflag;
+    private int propex;
     private Thread schedulerThread;
-    private class Target {
-        public int tid;
-        public int coordinates;
-        public int expTime;
-        public Target(int tid, int coordinates, int expTime){
-            this.tid = tid;
-            this.coordinates = coordinates;
-            this.expTime = expTime;
-        }
-    }
-    private class Proposal {
-        public int id;
-        public ArrayList<Target> targetlist;
-        public int status;
-        public Proposal(int id, ArrayList<Target> target, int status){
-            this.id = id;
-            this.targetlist = target;
-            this.status = status;
-        }
-    }
-    public SchedulerImpl() {
-        for(int i = 0; i < 5; i++){
-            ArrayList<Target> targets = new ArrayList<>();
-            for(int j = 0; j < 5; j++){
-                targets.add(new Target(j, j, j));
-            }
-            Proposal pro = new Proposal(i, targets, i);
-            proposals.add(pro);
-        }
+    private Telescope tel;
+    private Storage storage;
+    private DataBase db;
+    @Override
+    public void initialize(ContainerServices containerServices) throws ComponentLifecycleException {
+        super.initialize(containerServices);
+        running = false;
+        stopflag = false;
+        propex = -1;
+        schedulerThread = null;
     }
     @Override
-    public void start (){
-        if (running){ //Exception
+    public void execute() throws ComponentLifecycleException{
+        super.execute();
+        try {
+        tel = TelescopeHelper.narrow(this.m_containerServices.getComponent("TELESCOPE"));
+        storage = StorageHelper.narrow(this.m_containerServices.getComponent("STORAGE"));
+        db = DataBaseHelper.narrow(this.m_containerServices.getComponent("DATABASE"));
+        } catch (AcsJContainerServicesEx ex){m_logger.severe("Error in getting components");}
+    }
+    @Override
+    public void cleanUp() {
+        m_containerServices.releaseComponent(tel.name());
+        m_containerServices.releaseComponent(storage.name());
+        m_containerServices.releaseComponent(db.name());
+    }
+    @Override
+    public void start () throws SchedulerAlreadyRunningEx {
+        if (running){ throw new AcsJSchedulerAlreadyRunningEx("Scheduler already started").toSchedulerAlreadyRunningEx();
         }
         schedulerThread = new Thread( () -> {
             try{
+                proposals = db.getProposals();
                 running = true;
                 stopflag = false;
+                m_logger.info("Starting proposal poll");
                 for (Proposal pro : proposals){
-                    propex = pro.id;
-                    for (Target target : pro.targetlist){
-                        //Telescope.observe(target.coordinate, target.expTime)
-                        Thread.sleep(1000);
-                        }
+                    byte[][] imageList = new byte[1024][1024];
+                    propex = pro.pid;
+                    int i = 0;
+                    for (Target target : pro.targets){
+                        try {
+                            m_logger.info("Starting observation");
+                            byte[] image = tel.observe(target.coordinates, target.expTime);
+                            imageList[i] = image;
+                            i++;
+                            Thread.sleep(1000);
+                        } catch (PositionOutOfLimitsEx po)
+                        {m_logger.warning("Position out of limits");}
+                    }
+                    m_logger.info("Storing proposal");
+                    storage.storeObservation(pro, imageList);
                     if (stopflag){
                         break;
                     }
                 }
                 propex = -1;
                 running = false;
-            }catch(InterruptedException e){
-
-            }
+                m_logger.info("All proposal executed");
+            }catch(InterruptedException e){}
         });
         schedulerThread.start();
     }
     @Override
-    public void stop (){
-            if (!stopflag){
-                //EX
+    public void stop () throws SchedulerAlreadyStoppedEx{
+            if (!stopflag){ throw new AcsJSchedulerAlreadyStoppedEx("Scheduler already stopped").toSchedulerAlreadyStoppedEx();
             }
         stopflag = true;
        };
     @Override
-    public int proposalUnderExecution(){
+    public int proposalUnderExecution() throws NoProposalExecutingEx{
         if (propex == -1){
-            //EX
+            throw new AcsJNoProposalExecutingEx("Scheduler already stopped").toNoProposalExecutingEx();
         }
         return propex;
     };
 }
-
