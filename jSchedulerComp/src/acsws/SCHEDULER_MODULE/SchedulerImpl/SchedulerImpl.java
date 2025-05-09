@@ -46,7 +46,6 @@ public class SchedulerImpl extends ComponentImplBase implements SchedulerOperati
         super.execute();
         try {
         tel = TelescopeHelper.narrow(this.m_containerServices.getComponent("TELESCOPE"));
-        //storage = StorageHelper.narrow(this.m_containerServices.getComponent("STORAGE"));
         db = DataBaseHelper.narrow(this.m_containerServices.getComponent("DATABASE"));
         } catch (AcsJContainerServicesEx ex){m_logger.severe("Error in getting components");}
     }
@@ -54,7 +53,6 @@ public class SchedulerImpl extends ComponentImplBase implements SchedulerOperati
     public void cleanUp() {
         stopflag = true;
         m_containerServices.releaseComponent(tel.name());
-        //m_containerServices.releaseComponent(storage.name());
         m_containerServices.releaseComponent(db.name());
     }
     @Override
@@ -68,27 +66,23 @@ public class SchedulerImpl extends ComponentImplBase implements SchedulerOperati
                 stopflag = false;
                 m_logger.info("Starting proposal poll");
                 for (Proposal pro : proposals){
-                    byte[][] imageList = new byte[1024][1024];
                     propex = pro.pid;
-                    int i = 0;
                     for (Target target : pro.targets){
                         try {
                             m_logger.info("Starting observation");
                             byte[] image = tel.observe(target.coordinates, target.expTime);
-                            imageList[i] = image;
-                            i++;
+                            db.storeImage(propex,target.tid,image);
                             Thread.sleep(1000);
                         } catch (PositionOutOfLimitsEx po)
                         {m_logger.warning("Position out of limits");}
                     }
                     m_logger.info("Storing proposal");
-                    //storage.storeObservation(pro, imageList);
                     if (stopflag){
                         break;
                     }
                 }
                 propex = -1;
-                
+
                 running = false;
                 m_logger.info("All proposal executed");
             }catch(InterruptedException e){}
