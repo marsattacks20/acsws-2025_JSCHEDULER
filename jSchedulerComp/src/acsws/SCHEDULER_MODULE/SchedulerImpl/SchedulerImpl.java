@@ -88,6 +88,7 @@ public class SchedulerImpl extends ComponentImplBase implements SchedulerOperati
                     }
                 }
                 propex = -1;
+                
                 running = false;
                 m_logger.info("All proposal executed");
             }catch(InterruptedException e){}
