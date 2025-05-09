@@ -31,7 +31,7 @@ public class SchedulerImpl extends ComponentImplBase implements SchedulerOperati
     private int propex;
     private Thread schedulerThread;
     private Telescope tel;
-    private Storage storage;
+    //private Storage storage;
     private DataBase db;
     @Override
     public void initialize(ContainerServices containerServices) throws ComponentLifecycleException {
@@ -46,7 +46,7 @@ public class SchedulerImpl extends ComponentImplBase implements SchedulerOperati
         super.execute();
         try {
         tel = TelescopeHelper.narrow(this.m_containerServices.getComponent("TELESCOPE"));
-        storage = StorageHelper.narrow(this.m_containerServices.getComponent("STORAGE"));
+        //storage = StorageHelper.narrow(this.m_containerServices.getComponent("STORAGE"));
         db = DataBaseHelper.narrow(this.m_containerServices.getComponent("DATABASE"));
         } catch (AcsJContainerServicesEx ex){m_logger.severe("Error in getting components");}
     }
@@ -54,7 +54,7 @@ public class SchedulerImpl extends ComponentImplBase implements SchedulerOperati
     public void cleanUp() {
         stopflag = true;
         m_containerServices.releaseComponent(tel.name());
-        m_containerServices.releaseComponent(storage.name());
+        //m_containerServices.releaseComponent(storage.name());
         m_containerServices.releaseComponent(db.name());
     }
     @Override
@@ -82,7 +82,7 @@ public class SchedulerImpl extends ComponentImplBase implements SchedulerOperati
                         {m_logger.warning("Position out of limits");}
                     }
                     m_logger.info("Storing proposal");
-                    storage.storeObservation(pro, imageList);
+                    //storage.storeObservation(pro, imageList);
                     if (stopflag){
                         break;
                     }
@@ -109,3 +109,4 @@ public class SchedulerImpl extends ComponentImplBase implements SchedulerOperati
         return propex;
     };
 }
+
